@@ -1,0 +1,5 @@
+[run]
+omit = 
+    src/__init__.py
+    src/*/__init__.py
+    src/helper_utils/audit.py
