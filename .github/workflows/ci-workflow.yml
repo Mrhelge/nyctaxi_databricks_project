@@ -30,8 +30,8 @@ jobs:
       run: |
         pytest \
           --disable-warnings \
-          # --cov=./src \
-          # --cov-report=html
+          --cov=./src \
+          --cov-report=html
 
     - name: Upload coverage HTML report
       uses: actions/upload-artifact@v4
