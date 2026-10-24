@@ -60,3 +60,9 @@ with this project. It's also possible to interact with it directly using the CLI
    ```
    $ uv run pytest
    ```
+
+# VIRTUAL Environement SETUP
+
+# CLAUDE TO update it here 
+
+# add test line of code to README.md
