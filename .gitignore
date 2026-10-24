@@ -1,0 +1,17 @@
+.databricks/
+build/
+dist/
+__pycache__/
+*.egg-info
+scratch/**
+!scratch/README.md
+**/explorations/**
+**/!explorations/README.md
+.venv*/
+ideas.md
+notes.md
+gameplan.md
+decisions.md
+CLAUDE.md
+AGENTS.md
+nyctaxi_etl/notebooks/exploration

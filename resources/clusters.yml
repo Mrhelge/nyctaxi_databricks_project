@@ -1,0 +1,19 @@
+variables:
+  single_node_job_cluster:
+    type: "complex"
+    default:
+            spark_version: 18.x-scala2.13
+            spark_conf:
+              spark.master: local[*, 4]
+              spark.databricks.cluster.profile: singleNode
+            azure_attributes:
+              first_on_demand: 1
+              availability: SPOT_WITH_FALLBACK_AZURE
+              spot_bid_max_price: -1
+            node_type_id: Standard_DC4as_v5
+            custom_tags:
+              ResourceClass: SingleNode
+            enable_elastic_disk: true
+            data_security_mode: SINGLE_USER
+            runtime_engine: STANDARD
+            num_workers: 0

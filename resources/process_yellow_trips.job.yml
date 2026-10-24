@@ -1,0 +1,151 @@
+resources:
+  jobs:
+    nyctaxi_yellow_trips_job:
+      name: nyctaxi-yellow-trips-job
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "5"
+            dependencies:
+              - ../dist/*.whl
+      tasks:
+        - task_key: 00_ingest_trips_from_provider_cloud
+          notebook_task:
+            notebook_path: ../nyctaxi_etl/notebooks/pipeline/00_landing/00_landing_ingest_trips.ipynb
+            source: WORKSPACE
+            base_parameters:
+              pipeline_id: "{{job.id}}"
+              run_id: "{{job.run_id}}"
+              catalog: ${var.catalog}
+              run_date: "{{job.start_time.iso_date}}"
+              landing_schema: ${var.landing_schema}
+              bronze_schema: ${var.bronze_schema}
+          environment_key: default
+          # job_cluster_key: single_node_job_cluster
+          # libraries:
+          #   - whl: ../dist/*.whl
+        - task_key: 00_ingest_lookup_from_provider_cloud
+          notebook_task:
+            notebook_path: ../nyctaxi_etl/notebooks/pipeline/00_landing/00_landing_ingest_lookup.ipynb
+            source: WORKSPACE
+            base_parameters:
+              pipeline_id: "{{job.id}}"
+              run_id: "{{job.run_id}}"
+              catalog: ${var.catalog}
+              landing_schema: ${var.landing_schema}
+              bronze_schema: ${var.bronze_schema}
+          environment_key: default
+          # job_cluster_key: single_node_job_cluster
+          # libraries:
+          #   - whl: ../dist/*.whl
+        - task_key: check_if_there_are_files_to_ingest
+          depends_on:
+            - task_key: 00_ingest_trips_from_provider_cloud
+          condition_task:
+            op: GREATER_THAN
+            left: "{{tasks.00_ingest_trips_from_provider_cloud.values.files_count}}"
+            right: "0"
+        - task_key: 01_bronze_ingest_lookup
+          depends_on:
+            - task_key: 00_ingest_lookup_from_provider_cloud
+          notebook_task:
+            notebook_path: ../nyctaxi_etl/notebooks/pipeline/01_bronze/01_bronze_lookup.ipynb
+            source: WORKSPACE
+            base_parameters:
+              pipeline_id: "{{job.id}}"
+              run_id: "{{job.run_id}}"
+              catalog: ${var.catalog}
+              landing_schema: ${var.landing_schema}
+              bronze_schema: ${var.bronze_schema}
+          environment_key: default
+          # job_cluster_key: single_node_job_cluster
+          # libraries:
+          #   - whl: ../dist/*.whl
+        - task_key: 01_ingest_bronze_trips
+          depends_on:
+            - task_key: check_if_there_are_files_to_ingest
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../nyctaxi_etl/notebooks/pipeline/01_bronze/01_bronze_trips.ipynb
+            source: WORKSPACE
+            base_parameters:
+              pipeline_id: "{{job.id}}"
+              run_id: "{{job.run_id}}"
+              catalog: ${var.catalog}
+              landing_schema: ${var.landing_schema}
+              bronze_schema: ${var.bronze_schema}
+          environment_key: default
+          # job_cluster_key: single_node_job_cluster
+          # libraries:
+          #   - whl: ../dist/*.whl
+        - task_key: 02_silver_normalize_trips
+          depends_on:
+            - task_key: 01_ingest_bronze_trips
+          notebook_task:
+            notebook_path: ../nyctaxi_etl/notebooks/pipeline/02_silver/02_silver_trips_normalization.ipynb
+            source: WORKSPACE
+            base_parameters:
+              pipeline_id: "{{job.id}}"
+              run_id: "{{job.run_id}}"
+              run_date: "{{job.start_time.iso_date}}"
+              catalog: ${var.catalog}
+              bronze_schema: ${var.bronze_schema}
+              silver_schema: ${var.silver_schema}
+          environment_key: default
+          # job_cluster_key: single_node_job_cluster
+          # libraries:
+          #   - whl: ../dist/*.whl
+        - task_key: 02_silver_transform_lookup
+          depends_on:
+            - task_key: 01_bronze_ingest_lookup
+          notebook_task:
+            notebook_path: ../nyctaxi_etl/notebooks/pipeline/02_silver/02_silver_lookup_data.ipynb
+            source: WORKSPACE
+            base_parameters:
+              pipeline_id: "{{job.id}}"
+              run_id: "{{job.run_id}}"
+              run_date: "{{job.start_time.iso_date}}"
+              catalog: ${var.catalog}
+              bronze_schema: ${var.bronze_schema}
+              silver_schema: ${var.silver_schema}
+          environment_key: default
+          # job_cluster_key: single_node_job_cluster
+          # libraries:
+          #   - whl: ../dist/*.whl
+        - task_key: 02_silver_enrich_trips
+          depends_on:
+            - task_key: 02_silver_normalize_trips
+            - task_key: 02_silver_transform_lookup
+          notebook_task:
+            notebook_path: ../nyctaxi_etl/notebooks/pipeline/02_silver/02_silver_trips_enriched.ipynb
+            source: WORKSPACE
+            base_parameters:
+              pipeline_id: "{{job.id}}"
+              run_id: "{{job.run_id}}"
+              catalog: ${var.catalog}
+              silver_schema: ${var.silver_schema}
+          environment_key: default
+          # job_cluster_key: single_node_job_cluster
+          # libraries:
+          #   - whl: ../dist/*.whl
+        - task_key: 03_gold
+          depends_on:
+            - task_key: 02_silver_enrich_trips
+          notebook_task:
+            notebook_path: ../nyctaxi_etl/notebooks/pipeline/03_gold/03_gold.ipynb
+            source: WORKSPACE
+            base_parameters:
+              pipeline_id: "{{job.id}}"
+              run_id: "{{job.run_id}}"
+              catalog: ${var.catalog}
+              silver_schema: ${var.silver_schema}
+              gold_schema: ${var.gold_schema}
+          environment_key: default
+          # job_cluster_key: single_node_job_cluster
+          # libraries:
+          #   - whl: ../dist/*.whl
+      # job_clusters:
+      #   - job_cluster_key: single_node_job_cluster
+      #     new_cluster: "${var.single_node_job_cluster}"
+      queue:
+        enabled: true
