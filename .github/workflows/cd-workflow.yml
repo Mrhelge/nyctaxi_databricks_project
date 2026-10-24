@@ -1,0 +1,92 @@
+name: CD workflow
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+  cd-deploy-test:
+    name: Deploy to test
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python 3.12
+      uses: actions/setup-python@v7.1.0
+      with:
+        python-version: '3.12'
+
+    - name: Install Databricks CLI
+      run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
+
+    - name: Configure Databricks
+      run: |
+        cat <<EOF >  ~/.databrickscfg
+        [TEST]
+        host         = https://adb-7405619356768328.8.azuredatabricks.net
+        auth_type    = azure-client-secret
+        azure_client_id = ${{ secrets.AZURE_CLIENT_ID }}
+        azure_client_secret = ${{ secrets.AZURE_CLIENT_SECRET }}
+        azure_tenant_id = ${{ secrets.AZURE_TENANT_ID }}
+        EOF
+
+    - name: Validate bundle
+      run: |
+        databricks bundle validate \
+          --target test \
+          --profile TEST
+
+    - name: Deploy to TEST
+      run: |
+        databricks bundle deploy \
+          --target test \
+          --profile TEST
+          
+  cd-deploy-prod:
+    name: Deploy to prod
+    runs-on: ubuntu-latest
+    needs: cd-deploy-test
+    environment: prod
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python 3.12
+      uses: actions/setup-python@v7.1.0
+      with:
+        python-version: '3.12'
+
+    - name: Install Databricks CLI
+      run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
+
+    - name: Configure Databricks
+      run: |
+        cat <<EOF >  ~/.databrickscfg
+        [PROD]
+        host         = https://adb-7405617868343214.14.azuredatabricks.net
+        auth_type    = azure-client-secret
+        azure_client_id = ${{ secrets.AZURE_CLIENT_ID }}
+        azure_client_secret = ${{ secrets.AZURE_CLIENT_SECRET }}
+        azure_tenant_id = ${{ secrets.AZURE_TENANT_ID }}
+        EOF
+
+    - name: Validate bundle
+      run: |
+        databricks bundle validate \
+          --target prod \
+          --profile PROD
+
+    - name: Deploy to PROD
+      run: |
+        databricks bundle deploy \
+          --target prod \
+          --profile PROD
+        
